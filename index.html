@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>VC Fonds Return Calculator</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .container {
+        max-width: 600px;
+        margin: auto;
+      }
+      .input-group {
+        margin-bottom: 15px;
+      }
+      .input-group label {
+        display: block;
+        font-weight: bold;
+      }
+      .input-group input {
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+        box-sizing: border-box;
+      }
+      .output {
+        margin-top: 20px;
+        padding: 15px;
+        border: 1px solid #ccc;
+        background-color: #f9f9f9;
+      }
+      button {
+        width: 100%;
+        padding: 15px;
+        background-color: #007BFF;
+        color: #fff;
+        font-size: 16px;
+        font-weight: bold;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>VC Fonds Return Calculator</h1>
+      <div class="input-group">
+        <label for="fundSize">Fund Size (in EUR):</label>
+        <input type="number" id="fundSize" value="100000000" />
+      </div>
+      <div class="input-group">
+        <label for="investments">Number of Investments:</label>
+        <input type="number" id="investments" value="40" />
+      </div>
+      <div class="input-group">
+        <label for="successRate">Success Rate of Investments (%):</label>
+        <input type="number" id="successRate" value="20" />
+      </div>
+      <div class="input-group">
+        <label for="ownership">Average Ownership at Exit (%):</label>
+        <input type="number" id="ownership" value="3.5" />
+      </div>
+      <div class="input-group">
+        <label for="managementFee">Management Fee (% p.a.):</label>
+        <input type="number" id="managementFee" value="2" />
+      </div>
+      <div class="input-group">
+        <label for="fundDuration">Fund Duration (years):</label>
+        <input type="number" id="fundDuration" value="10" />
+      </div>
+      <div class="input-group">
+        <label for="desiredGrossMultiple">Desired Gross Multiple:</label>
+        <input type="number" id="desiredGrossMultiple" value="2" step="0.1" />
+      </div>
+
+      <hr/>
+      <h2>GP Details</h2>
+      <div class="input-group">
+        <label for="numberOfGPs">Number of GPs:</label>
+        <input type="number" id="numberOfGPs" value="2" />
+      </div>
+      <div class="input-group">
+        <label for="gpCommit">GP Commit (% of Fund Size):</label>
+        <input type="number" id="gpCommit" value="2" step="0.1" />
+      </div>
+      <div class="input-group">
+        <label for="hurdleRate">Hurdle Rate (%):</label>
+        <input type="number" id="hurdleRate" value="6" step="0.1" />
+      </div>
+
+      <button onclick="calculateExits()">Calculate</button>
+
+      <div class="output" id="results">
+        Enter your values and click Calculate.
+      </div>
+    </div>
+
+    <script>
+      function calculateExits() {
+        const fundSize = parseFloat(document.getElementById("fundSize").value)
+        const investments = parseInt(document.getElementById("investments").value)
+        const successRate = parseFloat(document.getElementById("successRate").value) / 100
+        const ownership = parseFloat(document.getElementById("ownership").value) / 100
+        const managementFee = parseFloat(document.getElementById("managementFee").value) / 100
+        const fundDuration = parseInt(document.getElementById("fundDuration").value)
+        const desiredGrossMultiple = parseFloat(document.getElementById("desiredGrossMultiple").value)
+
+        const numberOfGPs = parseInt(document.getElementById("numberOfGPs").value)
+        const gpCommitPercent = parseFloat(document.getElementById("gpCommit").value) / 100
+        const hurdleRate = parseFloat(document.getElementById("hurdleRate").value) / 100
+
+        const successfulInvestments = Math.round(investments * successRate)
+
+        // Management Fees
+        const totalManagementFees = fundSize * managementFee * fundDuration
+
+        // Total Returns (Gross) basierend auf gewünschtem Gross Multiple
+        const totalReturnsGross = desiredGrossMultiple * fundSize
+        // Total Returns (Net)
+        const totalReturnsNet = totalReturnsGross - totalManagementFees
+
+        // Erforderliche durchschnittliche Exit-Bewertung pro erfolgreiches Investment
+        const avgExitValuationRequired = totalReturnsGross / (ownership * successfulInvestments)
+
+        const grossMultiple = (totalReturnsGross / fundSize).toFixed(2)
+        const netMultiple = (totalReturnsNet / fundSize).toFixed(2)
+
+        // Ticket Size pro Investment
+        const ticketSize = fundSize / investments
+
+        // GP Commit
+        const totalGPcommit = fundSize * gpCommitPercent
+        const gpCommitPerGP = totalGPcommit / numberOfGPs
+
+        // Hurdle Calculation
+        const hurdleAmount = fundSize * (1 + hurdleRate)
+        let carry = 0
+        let investorReturn = totalReturnsNet
+        let profitAboveHurdle = totalReturnsNet - hurdleAmount
+
+        if (profitAboveHurdle > 0) {
+          carry = profitAboveHurdle * 0.2 // 20% Carry
+          investorReturn = totalReturnsNet - carry
+        }
+
+        const carryPerGP = carry / numberOfGPs
+        const gpReturnAfterCommit = carryPerGP - gpCommitPerGP
+
+        function fmtEUR(n) {
+          return n.toLocaleString() + " EUR"
+        }
+
+        const resultsDiv = document.getElementById("results")
+        resultsDiv.innerHTML = `
+          <p><strong>Ticket Size per Investment:</strong> ${fmtEUR(Math.round(ticketSize))}</p>
+          <p><strong>Successful Investments:</strong> ${successfulInvestments}</p>
+          <p><strong>Total Management Fees:</strong> ${fmtEUR(totalManagementFees)}</p>
+          <p><strong>Total Returns (Gross):</strong> ${fmtEUR(totalReturnsGross)}</p>
+          <p><strong>Total Returns (Net):</strong> ${fmtEUR(totalReturnsNet)}</p>
+          <p><strong>Average Exit Valuation required per Successful Investment:</strong> ${fmtEUR(Math.round(avgExitValuationRequired))}</p>
+          <p><strong>Gross Multiple:</strong> ${grossMultiple}X</p>
+          <p><strong>Net Multiple:</strong> ${netMultiple}X</p>
+          <hr>
+          <p><strong>Hurdle Amount:</strong> ${fmtEUR(Math.round(hurdleAmount))}</p>
+          <p><strong>Carry (20% above Hurdle):</strong> ${fmtEUR(carry)}</p>
+          <p><strong>Investor Return (after Carry):</strong> ${fmtEUR(investorReturn)}</p>
+          <hr>
+          <p><strong>Total GP Commit:</strong> ${fmtEUR(Math.round(totalGPcommit))}</p>
+          <p><strong>GP Commit per GP:</strong> ${fmtEUR(Math.round(gpCommitPerGP))}</p>
+          <p><strong>Carry per GP:</strong> ${fmtEUR(Math.round(carryPerGP))}</p>
+          <p><strong>Return per GP (after GP Commit):</strong> ${fmtEUR(Math.round(gpReturnAfterCommit))}</p>
+        `
+      }
+    </script>
+  </body>
+</html>
